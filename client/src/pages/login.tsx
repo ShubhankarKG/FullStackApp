@@ -11,38 +11,28 @@ import {
 import { Wrapper } from "../components/Wrapper";
 import { InputFields } from "../components/InputFields";
 import { useMutation } from "urql";
+import { useLoginMutation } from "../generated/graphql";
+import { toErrorMap } from "../utils/toErrorMap";
+import { useRouter } from "next/router";
 
 interface loginProps {}
 
-const LOGIN_MUTATION = `
-mutation Login($username: String!, $password: String!) {
-  login(options:{
-    username: $username,
-    password: $password
-  }) {
-    errors {
-      field
-      message
-    }
-    user {
-      id
-      createdAt
-      updatedAt
-      username
-    }
-  }
-}`;
-
 const Login: React.FC<loginProps> = ({}) => {
-  const [, login] = useMutation(LOGIN_MUTATION);
+  const [, login] = useLoginMutation();
+
+  const router = useRouter();
 
   return (
     <Wrapper variant="small">
       <Formik
         initialValues={{ username: "", password: "" }}
-        onSubmit={(values) => {
-          console.log(values);
-          return login(values);
+        onSubmit={async (values, { setErrors }) => {
+          const response = await login(values);
+          if (response.data?.login.errors) {
+            setErrors(toErrorMap(response.data.login.errors));
+          } else if (response.data.login.user) {
+            router.push("/");
+          }
         }}
       >
         {({ values, handleChange, isSubmitting }) => (
